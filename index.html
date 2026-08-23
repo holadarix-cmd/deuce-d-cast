@@ -1,1 +1,1132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
 
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Deuce D Cast</title>
+
+  <script
+    src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js">
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000000;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #screen {
+      position: relative;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+
+      aspect-ratio: 16 / 9;
+
+      background: #06182e;
+      color: white;
+
+      display: grid;
+
+      grid-template-columns:
+        34% 26% 40%;
+
+      grid-template-rows:
+        1fr 1fr;
+
+      gap: 12px;
+
+      padding: 18px;
+    }
+
+    .team {
+      background: #0b2544;
+
+      border: 2px solid #24496d;
+      border-radius: 18px;
+
+      display: flex;
+      align-items: center;
+
+      gap: 12px;
+
+      padding: 12px;
+
+      min-width: 0;
+    }
+
+    .team-a {
+      border-color: #9bea3c;
+    }
+
+    .team-b {
+      border-color: #3a9bff;
+    }
+
+    .player {
+      flex: 1;
+
+      height: 100%;
+
+      position: relative;
+
+      overflow: hidden;
+
+      border-radius: 14px;
+
+      background: #102d4f;
+
+      border: 2px solid #24496d;
+    }
+
+    .player.serving {
+      border-width: 4px;
+    }
+
+    .team-a .player.serving {
+      border-color: #9bea3c;
+    }
+
+    .team-b .player.serving {
+      border-color: #3a9bff;
+    }
+
+    .player img {
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      display: none;
+    }
+
+    .player-placeholder {
+      position: absolute;
+
+      inset: 0;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      font-size: 70px;
+
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .player-name {
+      position: absolute;
+
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      padding: 18px 8px 8px;
+
+      text-align: center;
+
+      font-size: 21px;
+      font-weight: 700;
+
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+
+      background:
+        linear-gradient(
+          transparent,
+          rgba(0, 0, 0, 0.92)
+        );
+    }
+
+    .serve-ball {
+      position: absolute;
+
+      top: 8px;
+      right: 8px;
+
+      width: 36px;
+      height: 36px;
+
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 50%;
+
+      background: #06182e;
+
+      font-size: 20px;
+    }
+
+    .player.serving .serve-ball {
+      display: flex;
+    }
+
+    #points {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+
+      display: grid;
+
+      grid-template-rows:
+        auto 1fr 1fr auto;
+
+      gap: 12px;
+    }
+
+    #state {
+      text-align: center;
+
+      font-size: 18px;
+      font-weight: 800;
+
+      letter-spacing: 1.4px;
+
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .point {
+      background: #0b2544;
+
+      border-radius: 18px;
+
+      border: 2px solid #24496d;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      font-size: 110px;
+      font-weight: 900;
+
+      line-height: 1;
+    }
+
+    #pointA {
+      color: #9bea3c;
+      border-color: #9bea3c;
+    }
+
+    #pointB {
+      color: white;
+      border-color: #3a9bff;
+    }
+
+    #server {
+      background: #0a213d;
+
+      border-radius: 12px;
+
+      padding: 10px;
+
+      text-align: center;
+
+      font-size: 18px;
+      font-weight: 700;
+
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    #stats {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+
+      display: grid;
+
+      grid-template-columns:
+        2fr 1fr;
+
+      gap: 12px;
+    }
+
+    .score-box {
+      background: #0b2544;
+
+      border: 2px solid #24496d;
+      border-radius: 18px;
+
+      padding: 14px;
+
+      display: flex;
+
+      flex-direction: column;
+    }
+
+    .score-title {
+      text-align: center;
+
+      font-size: 22px;
+      font-weight: 900;
+
+      letter-spacing: 2px;
+
+      margin-bottom: 12px;
+    }
+
+    .numbers {
+      display: grid;
+
+      color: rgba(255, 255, 255, 0.55);
+
+      font-size: 17px;
+      font-weight: 700;
+
+      text-align: center;
+
+      margin-bottom: 10px;
+    }
+
+    .games-numbers {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .sets-numbers {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .score-row {
+      flex: 1;
+
+      display: grid;
+
+      align-items: center;
+
+      gap: 6px;
+
+      margin: 5px 0;
+    }
+
+    .games-row {
+      grid-template-columns:
+        46px repeat(6, 1fr);
+    }
+
+    .sets-row {
+      grid-template-columns:
+        repeat(3, 1fr);
+    }
+
+    .game-total {
+      font-size: 34px;
+      font-weight: 900;
+
+      text-align: center;
+    }
+
+    .team-a-color {
+      color: #9bea3c;
+    }
+
+    .team-b-color {
+      color: #3a9bff;
+    }
+
+    .bar {
+      height: 100%;
+
+      min-height: 32px;
+
+      border-radius: 6px;
+
+      border: 2px solid #24496d;
+
+      background: #0a213d;
+    }
+
+    .bar.active-a {
+      background: #9bea3c;
+      border-color: #9bea3c;
+    }
+
+    .bar.active-b {
+      background: #3a9bff;
+      border-color: #3a9bff;
+    }
+
+    .set-cell {
+      height: 100%;
+
+      min-height: 46px;
+
+      border-radius: 7px;
+
+      border: 2px solid #24496d;
+
+      background: #0a213d;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      font-size: 30px;
+      font-weight: 900;
+    }
+
+    #waiting {
+      position: absolute;
+
+      inset: 0;
+
+      z-index: 20;
+
+      background: #06182e;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+      justify-content: center;
+
+      text-align: center;
+    }
+
+    #waiting-title {
+      font-size: 72px;
+      font-weight: 900;
+
+      letter-spacing: 3px;
+    }
+
+    #waiting-subtitle {
+      margin-top: 18px;
+
+      font-size: 24px;
+
+      color: rgba(255, 255, 255, 0.6);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="screen">
+
+    <div
+      id="waiting"
+    >
+      <div
+        id="waiting-title"
+      >
+        DEUCE D
+      </div>
+
+      <div
+        id="waiting-subtitle"
+      >
+        Esperando marcador...
+      </div>
+    </div>
+
+    <!-- PAREJA A -->
+
+    <div
+      class="team team-a"
+      id="teamA"
+    >
+
+      <div
+        class="player"
+        id="playerA1"
+      >
+
+        <img
+          id="photoA1"
+          alt=""
+        />
+
+        <div
+          class="player-placeholder"
+        >
+          👤
+        </div>
+
+        <div
+          class="serve-ball"
+        >
+          🎾
+        </div>
+
+        <div
+          class="player-name"
+          id="nameA1"
+        >
+          Jugador 1
+        </div>
+
+      </div>
+
+      <div
+        class="player"
+        id="playerA2"
+      >
+
+        <img
+          id="photoA2"
+          alt=""
+        />
+
+        <div
+          class="player-placeholder"
+        >
+          👤
+        </div>
+
+        <div
+          class="serve-ball"
+        >
+          🎾
+        </div>
+
+        <div
+          class="player-name"
+          id="nameA2"
+        >
+          Jugador 2
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- PAREJA B -->
+
+    <div
+      class="team team-b"
+      id="teamB"
+    >
+
+      <div
+        class="player"
+        id="playerB1"
+      >
+
+        <img
+          id="photoB1"
+          alt=""
+        />
+
+        <div
+          class="player-placeholder"
+        >
+          👤
+        </div>
+
+        <div
+          class="serve-ball"
+        >
+          🎾
+        </div>
+
+        <div
+          class="player-name"
+          id="nameB1"
+        >
+          Jugador 3
+        </div>
+
+      </div>
+
+      <div
+        class="player"
+        id="playerB2"
+      >
+
+        <img
+          id="photoB2"
+          alt=""
+        />
+
+        <div
+          class="player-placeholder"
+        >
+          👤
+        </div>
+
+        <div
+          class="serve-ball"
+        >
+          🎾
+        </div>
+
+        <div
+          class="player-name"
+          id="nameB2"
+        >
+          Jugador 4
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- PUNTOS -->
+
+    <div
+      id="points"
+    >
+
+      <div
+        id="state"
+      >
+        PUNTO EN JUEGO
+      </div>
+
+      <div
+        class="point"
+        id="pointA"
+      >
+        0
+      </div>
+
+      <div
+        class="point"
+        id="pointB"
+      >
+        0
+      </div>
+
+      <div
+        id="server"
+      >
+        🎾 SACA
+      </div>
+
+    </div>
+
+    <!-- GAMES / SETS -->
+
+    <div
+      id="stats"
+    >
+
+      <div
+        class="score-box"
+      >
+
+        <div
+          class="score-title"
+        >
+          GAMES
+        </div>
+
+        <div
+          class="numbers games-numbers"
+        >
+          <span>1</span>
+          <span>2</span>
+          <span>3</span>
+          <span>4</span>
+          <span>5</span>
+          <span>6</span>
+        </div>
+
+        <div
+          class="score-row games-row"
+          id="gamesA"
+        >
+        </div>
+
+        <div
+          class="score-row games-row"
+          id="gamesB"
+        >
+        </div>
+
+      </div>
+
+      <div
+        class="score-box"
+      >
+
+        <div
+          class="score-title"
+        >
+          SETS
+        </div>
+
+        <div
+          class="numbers sets-numbers"
+        >
+          <span>1</span>
+          <span>2</span>
+          <span>3</span>
+        </div>
+
+        <div
+          class="score-row sets-row"
+          id="setsA"
+        >
+        </div>
+
+        <div
+          class="score-row sets-row"
+          id="setsB"
+        >
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    const NAMESPACE =
+      "urn:x-cast:com.deuced.score";
+
+    function createGamesRow(
+      id,
+      team
+    ) {
+
+      const row =
+        document.getElementById(id);
+
+      row.innerHTML = "";
+
+      const total =
+        document.createElement("div");
+
+      total.className =
+        "game-total " +
+        (
+          team === "A"
+            ? "team-a-color"
+            : "team-b-color"
+        );
+
+      total.id =
+        "gameTotal" + team;
+
+      total.textContent = "0";
+
+      row.appendChild(total);
+
+      for (
+        let i = 1;
+        i <= 6;
+        i++
+      ) {
+
+        const cell =
+          document.createElement("div");
+
+        cell.className =
+          "bar";
+
+        cell.id =
+          "game" +
+          team +
+          i;
+
+        row.appendChild(cell);
+
+      }
+
+    }
+
+
+    function createSetsRow(
+      id,
+      team
+    ) {
+
+      const row =
+        document.getElementById(id);
+
+      row.innerHTML = "";
+
+      for (
+        let i = 1;
+        i <= 3;
+        i++
+      ) {
+
+        const cell =
+          document.createElement("div");
+
+        cell.className =
+          "set-cell " +
+          (
+            team === "A"
+              ? "team-a-color"
+              : "team-b-color"
+          );
+
+        cell.id =
+          "set" +
+          team +
+          i;
+
+        row.appendChild(cell);
+
+      }
+
+    }
+
+
+    createGamesRow(
+      "gamesA",
+      "A"
+    );
+
+    createGamesRow(
+      "gamesB",
+      "B"
+    );
+
+    createSetsRow(
+      "setsA",
+      "A"
+    );
+
+    createSetsRow(
+      "setsB",
+      "B"
+    );
+
+
+    function setText(
+      id,
+      value
+    ) {
+
+      const element =
+        document.getElementById(id);
+
+      if (!element) {
+        return;
+      }
+
+      element.textContent =
+        value ?? "";
+
+    }
+
+
+    function setPhoto(
+      id,
+      value
+    ) {
+
+      const image =
+        document.getElementById(id);
+
+      if (!image) {
+        return;
+      }
+
+      if (
+        value &&
+        value.length > 0
+      ) {
+
+        image.src = value;
+        image.style.display =
+          "block";
+
+      } else {
+
+        image.removeAttribute(
+          "src"
+        );
+
+        image.style.display =
+          "none";
+
+      }
+
+    }
+
+
+    function setServingPlayer(
+      server
+    ) {
+
+      const players = [
+        "A1",
+        "A2",
+        "B1",
+        "B2"
+      ];
+
+      players.forEach(
+        player => {
+
+          const element =
+            document.getElementById(
+              "player" + player
+            );
+
+          element.classList.remove(
+            "serving"
+          );
+
+        }
+      );
+
+      const active =
+        document.getElementById(
+          "player" + server
+        );
+
+      if (active) {
+
+        active.classList.add(
+          "serving"
+        );
+
+      }
+
+    }
+
+
+    function updateGameBars(
+      team,
+      games
+    ) {
+
+      setText(
+        "gameTotal" + team,
+        games
+      );
+
+      for (
+        let i = 1;
+        i <= 6;
+        i++
+      ) {
+
+        const cell =
+          document.getElementById(
+            "game" +
+            team +
+            i
+          );
+
+        cell.className =
+          "bar";
+
+        if (i <= games) {
+
+          cell.classList.add(
+            team === "A"
+              ? "active-a"
+              : "active-b"
+          );
+
+        }
+
+      }
+
+    }
+
+
+    function updateSets(
+      team,
+      values
+    ) {
+
+      const sets =
+        Array.isArray(values)
+          ? values
+          : [];
+
+      for (
+        let i = 1;
+        i <= 3;
+        i++
+      ) {
+
+        setText(
+          "set" +
+          team +
+          i,
+          sets[i - 1] ?? ""
+        );
+
+      }
+
+    }
+
+
+    function updateScore(
+      data
+    ) {
+
+      if (!data) {
+        return;
+      }
+
+      document.getElementById(
+        "waiting"
+      ).style.display =
+        "none";
+
+      setText(
+        "nameA1",
+        data.teamA1 || "Jugador 1"
+      );
+
+      setText(
+        "nameA2",
+        data.teamA2 || "Jugador 2"
+      );
+
+      setText(
+        "nameB1",
+        data.teamB1 || "Jugador 3"
+      );
+
+      setText(
+        "nameB2",
+        data.teamB2 || "Jugador 4"
+      );
+
+      setPhoto(
+        "photoA1",
+        data.photoA1
+      );
+
+      setPhoto(
+        "photoA2",
+        data.photoA2
+      );
+
+      setPhoto(
+        "photoB1",
+        data.photoB1
+      );
+
+      setPhoto(
+        "photoB2",
+        data.photoB2
+      );
+
+      setText(
+        "pointA",
+        data.pointsA ?? "0"
+      );
+
+      setText(
+        "pointB",
+        data.pointsB ?? "0"
+      );
+
+      updateGameBars(
+        "A",
+        Number(
+          data.gamesA ?? 0
+        )
+      );
+
+      updateGameBars(
+        "B",
+        Number(
+          data.gamesB ?? 0
+        )
+      );
+
+      updateSets(
+        "A",
+        data.setsA
+      );
+
+      updateSets(
+        "B",
+        data.setsB
+      );
+
+      setServingPlayer(
+        data.server
+      );
+
+      setText(
+        "server",
+        data.serverName
+          ? "🎾 SACA: " +
+            data.serverName
+          : "🎾 SACA"
+      );
+
+      setText(
+        "state",
+        data.state ||
+        "PUNTO EN JUEGO"
+      );
+
+    }
+
+
+    const context =
+      cast.framework
+        .CastReceiverContext
+        .getInstance();
+
+
+    context.addCustomMessageListener(
+      NAMESPACE,
+      event => {
+
+        try {
+
+          const data =
+            typeof event.data ===
+            "string"
+              ? JSON.parse(
+                  event.data
+                )
+              : event.data;
+
+          updateScore(
+            data
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Deuce D CAST:",
+            error
+          );
+
+        }
+
+      }
+    );
+
+
+    context.start();
+
+  </script>
+
+</body>
+</html>

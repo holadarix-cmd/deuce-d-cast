@@ -275,18 +275,41 @@
       align-items: center;
       justify-content: center;
 
+      /*
+        PUNTOS PRINCIPALES 3x:
+        64 / 6.1vw / 104  ->  192 / 18.3vw / 312.
+      */
       font-size: clamp(
-        64px,
-        6.1vw,
-        104px
+        192px,
+        18.3vw,
+        312px
       );
 
       font-weight: 900;
 
-      line-height: 1;
+      line-height: 0.90;
+
+      letter-spacing: -0.04em;
 
       min-width: 0;
       min-height: 0;
+
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /*
+      ADV necesita un tamaño menor porque tiene tres letras.
+      Los valores 0 / 15 / 30 / 40 conservan el tamaño 3x.
+    */
+    .point.compact {
+      font-size: clamp(
+        116px,
+        11vw,
+        188px
+      );
+
+      letter-spacing: -0.06em;
     }
 
     #pointA {
@@ -961,6 +984,32 @@
     }
 
 
+    function setPointText(
+      id,
+      value
+    ) {
+
+      const element =
+        document.getElementById(id);
+
+      if (!element) {
+        return;
+      }
+
+      const text =
+        String(value ?? "0");
+
+      element.textContent =
+        text;
+
+      element.classList.toggle(
+        "compact",
+        text.length >= 3
+      );
+
+    }
+
+
     function setPhoto(
       id,
       value
@@ -1168,12 +1217,12 @@
         data.photoB2
       );
 
-      setText(
+      setPointText(
         "pointA",
         data.pointsA ?? "0"
       );
 
-      setText(
+      setPointText(
         "pointB",
         data.pointsB ?? "0"
       );

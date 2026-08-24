@@ -1164,40 +1164,9 @@
     }
 
 
-    const audioTransfers =
-      new Map();
-
     let currentAudio = null;
     let currentAudioCritical = false;
     let pendingAudioPayload = null;
-
-
-    function decodeBase64Audio(
-      encoded
-    ) {
-
-      const binary =
-        atob(encoded);
-
-      const bytes =
-        new Uint8Array(
-          binary.length
-        );
-
-      for (
-        let i = 0;
-        i < binary.length;
-        i++
-      ) {
-
-        bytes[i] =
-          binary.charCodeAt(i);
-
-      }
-
-      return bytes;
-
-    }
 
 
     function stopCurrentAudio() {
@@ -1208,15 +1177,10 @@
 
       try {
         currentAudio.pause();
-        currentAudio.currentTime = 0;
-      } catch (_) {}
-
-      try {
-        if (currentAudio.src) {
-          URL.revokeObjectURL(
-            currentAudio.src
-          );
-        }
+        currentAudio.removeAttribute(
+          "src"
+        );
+        currentAudio.load();
       } catch (_) {}
 
       currentAudio = null;
@@ -1225,12 +1189,12 @@
     }
 
 
-    function playAudioPayload(
+    function playAudioUrlPayload(
       payload
     ) {
 
       if (!payload ||
-          !payload.encoded) {
+          !payload.url) {
         return;
       }
 
@@ -1241,7 +1205,7 @@
       ) {
 
         // Mientras suena SET POINT / MATCH POINT,
-        // guardamos solamente el anuncio más reciente.
+        // guardamos solamente el anuncio normal más reciente.
         pendingAudioPayload =
           payload;
 
@@ -1253,32 +1217,14 @@
 
       try {
 
-        const bytes =
-          decodeBase64Audio(
-            payload.encoded
-          );
-
-        const blob =
-          new Blob(
-            [bytes],
-            {
-              type:
-                payload.mime ||
-                "audio/wav"
-            }
-          );
-
-        const url =
-          URL.createObjectURL(
-            blob
-          );
-
         const audio =
-          new Audio(url);
+          new Audio();
 
         audio.autoplay = true;
         audio.preload = "auto";
         audio.volume = 1.0;
+        audio.src =
+          payload.url;
 
         currentAudio =
           audio;
@@ -1287,12 +1233,6 @@
           !!payload.critical;
 
         const finish = () => {
-
-          try {
-            URL.revokeObjectURL(
-              url
-            );
-          } catch (_) {}
 
           if (currentAudio ===
               audio) {
@@ -1309,7 +1249,7 @@
             pendingAudioPayload =
               null;
 
-            playAudioPayload(
+            playAudioUrlPayload(
               next
             );
 
@@ -1327,7 +1267,16 @@
 
         audio.addEventListener(
           "error",
-          finish,
+          () => {
+
+            console.error(
+              "Deuce D CAST audio: no se pudo cargar",
+              payload.url
+            );
+
+            finish();
+
+          },
           {
             once: true
           }
@@ -1365,116 +1314,36 @@
       const type =
         data?.type;
 
-      const audioId =
-        data?.audioId;
+      if (type ===
+          "audioStop") {
 
-      if (!type || !audioId) {
+        pendingAudioPayload =
+          null;
+
+        stopCurrentAudio();
+
+        return true;
+
+      }
+
+      if (type !==
+          "audioUrl") {
         return false;
       }
 
-      if (type ===
-          "audioStart") {
-
-        audioTransfers.set(
-          audioId,
-          {
-            mime:
-              data.mime ||
-              "audio/wav",
-            totalChunks:
-              Number(
-                data.totalChunks ||
-                0
-              ),
-            critical:
-              !!data.critical,
-            chunks: []
-          }
-        );
-
-        return true;
-
-      }
-
-      if (type ===
-          "audioChunk") {
-
-        const transfer =
-          audioTransfers.get(
-            audioId
-          );
-
-        if (!transfer) {
-          return true;
+      playAudioUrlPayload(
+        {
+          url:
+            data.url || "",
+          mime:
+            data.mime ||
+            "audio/wav",
+          critical:
+            !!data.critical
         }
+      );
 
-        transfer.chunks[
-          Number(
-            data.index || 0
-          )
-        ] =
-          data.data || "";
-
-        return true;
-
-      }
-
-      if (type ===
-          "audioEnd") {
-
-        const transfer =
-          audioTransfers.get(
-            audioId
-          );
-
-        audioTransfers.delete(
-          audioId
-        );
-
-        if (!transfer) {
-          return true;
-        }
-
-        const received =
-          transfer.chunks.filter(
-            chunk =>
-              typeof chunk ===
-                "string" &&
-              chunk.length > 0
-          );
-
-        if (
-          transfer.totalChunks > 0 &&
-          received.length !==
-            transfer.totalChunks
-        ) {
-
-          console.error(
-            "Deuce D CAST audio: faltan fragmentos"
-          );
-
-          return true;
-
-        }
-
-        playAudioPayload(
-          {
-            mime:
-              transfer.mime,
-            critical:
-              transfer.critical,
-            encoded:
-              transfer.chunks.join(
-                ""
-              )
-          }
-        );
-
-        return true;
-
-      }
-
-      return false;
+      return true;
 
     }
 

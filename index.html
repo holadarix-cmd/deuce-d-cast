@@ -36,10 +36,27 @@
       justify-content: center;
     }
 
+    /*
+      SAFE AREA PARA TV / CHROMECAST
+
+      Dejamos aproximadamente 4% de margen alrededor de todo
+      el tablero para evitar que el overscan del televisor corte
+      fotos, títulos o el tercer set.
+
+      El tablero sigue siendo 16:9.
+    */
     #screen {
       position: relative;
-      width: min(100vw, calc(100vh * 16 / 9));
-      height: min(100vh, calc(100vw * 9 / 16));
+
+      width: min(
+        92vw,
+        calc(92vh * 16 / 9)
+      );
+
+      height: min(
+        92vh,
+        calc(92vw * 9 / 16)
+      );
 
       aspect-ratio: 16 / 9;
 
@@ -73,6 +90,7 @@
       padding: 12px;
 
       min-width: 0;
+      min-height: 0;
     }
 
     .team-a {
@@ -87,6 +105,8 @@
       flex: 1;
 
       height: 100%;
+      min-width: 0;
+      min-height: 0;
 
       position: relative;
 
@@ -130,9 +150,18 @@
       align-items: center;
       justify-content: center;
 
-      font-size: 70px;
+      font-size: clamp(
+        34px,
+        4vw,
+        70px
+      );
 
-      color: rgba(255, 255, 255, 0.25);
+      color: rgba(
+        255,
+        255,
+        255,
+        0.25
+      );
     }
 
     .player-name {
@@ -146,7 +175,12 @@
 
       text-align: center;
 
-      font-size: 21px;
+      font-size: clamp(
+        14px,
+        1.15vw,
+        21px
+      );
+
       font-weight: 700;
 
       overflow: hidden;
@@ -166,8 +200,8 @@
       top: 8px;
       right: 8px;
 
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
 
       display: none;
 
@@ -178,7 +212,7 @@
 
       background: #06182e;
 
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .player.serving .serve-ball {
@@ -195,17 +229,38 @@
         auto 1fr 1fr auto;
 
       gap: 12px;
+
+      min-width: 0;
+      min-height: 0;
     }
 
     #state {
+      min-height: 30px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
       text-align: center;
 
-      font-size: 18px;
+      font-size: clamp(
+        14px,
+        1.05vw,
+        18px
+      );
+
       font-weight: 800;
 
-      letter-spacing: 1.4px;
+      letter-spacing: 1.2px;
 
-      color: rgba(255, 255, 255, 0.75);
+      color: rgba(
+        255,
+        255,
+        255,
+        0.78
+      );
+
+      padding-top: 2px;
     }
 
     .point {
@@ -220,10 +275,18 @@
       align-items: center;
       justify-content: center;
 
-      font-size: 110px;
+      font-size: clamp(
+        64px,
+        6.1vw,
+        104px
+      );
+
       font-weight: 900;
 
       line-height: 1;
+
+      min-width: 0;
+      min-height: 0;
     }
 
     #pointA {
@@ -245,7 +308,12 @@
 
       text-align: center;
 
-      font-size: 18px;
+      font-size: clamp(
+        14px,
+        1.05vw,
+        18px
+      );
+
       font-weight: 700;
 
       overflow: hidden;
@@ -260,9 +328,13 @@
       display: grid;
 
       grid-template-columns:
-        2fr 1fr;
+        minmax(0, 2fr)
+        minmax(0, 1fr);
 
       gap: 12px;
+
+      min-width: 0;
+      min-height: 0;
     }
 
     .score-box {
@@ -271,43 +343,65 @@
       border: 2px solid #24496d;
       border-radius: 18px;
 
-      padding: 14px;
+      padding: 12px;
 
       display: flex;
 
       flex-direction: column;
+
+      min-width: 0;
+      min-height: 0;
+
+      overflow: hidden;
     }
 
     .score-title {
       text-align: center;
 
-      font-size: 22px;
+      font-size: clamp(
+        16px,
+        1.35vw,
+        22px
+      );
+
       font-weight: 900;
 
-      letter-spacing: 2px;
+      letter-spacing: 1.6px;
 
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .numbers {
       display: grid;
 
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(
+        255,
+        255,
+        255,
+        0.55
+      );
 
-      font-size: 17px;
+      font-size: clamp(
+        12px,
+        1vw,
+        17px
+      );
+
       font-weight: 700;
 
       text-align: center;
 
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .games-numbers {
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns:
+        repeat(6, minmax(0, 1fr));
     }
 
     .sets-numbers {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
     }
 
     .score-row {
@@ -317,23 +411,32 @@
 
       align-items: center;
 
-      gap: 6px;
+      gap: 5px;
 
-      margin: 5px 0;
+      margin: 4px 0;
+
+      min-width: 0;
+      min-height: 0;
     }
 
     .games-row {
       grid-template-columns:
-        46px repeat(6, 1fr);
+        42px
+        repeat(6, minmax(0, 1fr));
     }
 
     .sets-row {
       grid-template-columns:
-        repeat(3, 1fr);
+        repeat(3, minmax(0, 1fr));
     }
 
     .game-total {
-      font-size: 34px;
+      font-size: clamp(
+        24px,
+        2vw,
+        34px
+      );
+
       font-weight: 900;
 
       text-align: center;
@@ -348,9 +451,11 @@
     }
 
     .bar {
+      width: 100%;
       height: 100%;
 
-      min-height: 32px;
+      min-width: 0;
+      min-height: 28px;
 
       border-radius: 6px;
 
@@ -370,9 +475,11 @@
     }
 
     .set-cell {
+      width: 100%;
       height: 100%;
 
-      min-height: 46px;
+      min-width: 0;
+      min-height: 42px;
 
       border-radius: 7px;
 
@@ -385,7 +492,12 @@
       align-items: center;
       justify-content: center;
 
-      font-size: 30px;
+      font-size: clamp(
+        22px,
+        1.75vw,
+        30px
+      );
+
       font-weight: 900;
     }
 
@@ -406,10 +518,17 @@
       justify-content: center;
 
       text-align: center;
+
+      padding: 5%;
     }
 
     #waiting-title {
-      font-size: 72px;
+      font-size: clamp(
+        42px,
+        4vw,
+        72px
+      );
+
       font-weight: 900;
 
       letter-spacing: 3px;
@@ -418,9 +537,18 @@
     #waiting-subtitle {
       margin-top: 18px;
 
-      font-size: 24px;
+      font-size: clamp(
+        17px,
+        1.4vw,
+        24px
+      );
 
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(
+        255,
+        255,
+        255,
+        0.6
+      );
     }
   </style>
 </head>
@@ -887,6 +1015,10 @@
               "player" + player
             );
 
+          if (!element) {
+            return;
+          }
+
           element.classList.remove(
             "serving"
           );
@@ -932,6 +1064,10 @@
             team +
             i
           );
+
+        if (!cell) {
+          continue;
+        }
 
         cell.className =
           "bar";

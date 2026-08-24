@@ -1164,27 +1164,103 @@
     }
 
 
-    let currentAudio = null;
+    /*
+      AUDIO DE VOZ CAST
+      =================
+
+      Usamos UN SOLO elemento Audio durante toda la sesión.
+
+      Algunos Chromecast dejan de reproducir después de crear
+      repetidamente varios objetos new Audio(). Reutilizar un
+      único reproductor evita agotar recursos/decodificadores
+      del Web Receiver.
+    */
+
+    const voiceAudio =
+      new Audio();
+
+    voiceAudio.preload = "auto";
+    voiceAudio.volume = 1.0;
+
     let currentAudioCritical = false;
     let pendingAudioPayload = null;
+    let audioPlaybackToken = 0;
+
+
+    function clearVoiceAudioSource() {
+
+      try {
+        voiceAudio.pause();
+      } catch (_) {}
+
+      try {
+        voiceAudio.removeAttribute(
+          "src"
+        );
+
+        /*
+          load() después de quitar src obliga al receiver a
+          liberar la conexión HTTP y el recurso anterior.
+        */
+        voiceAudio.load();
+      } catch (_) {}
+
+    }
 
 
     function stopCurrentAudio() {
 
-      if (!currentAudio) {
+      audioPlaybackToken++;
+
+      pendingAudioPayload = null;
+      currentAudioCritical = false;
+
+      clearVoiceAudioSource();
+
+    }
+
+
+    function finishVoicePlayback(
+      token
+    ) {
+
+      /*
+        Ignoramos callbacks atrasados pertenecientes a una
+        reproducción anterior.
+      */
+      if (
+        token !==
+        audioPlaybackToken
+      ) {
         return;
       }
 
-      try {
-        currentAudio.pause();
-        currentAudio.removeAttribute(
-          "src"
-        );
-        currentAudio.load();
-      } catch (_) {}
+      clearVoiceAudioSource();
 
-      currentAudio = null;
       currentAudioCritical = false;
+
+      if (pendingAudioPayload) {
+
+        const next =
+          pendingAudioPayload;
+
+        pendingAudioPayload =
+          null;
+
+        /*
+          Dejamos que el receiver libere completamente el
+          recurso anterior antes de cargar el siguiente.
+        */
+        setTimeout(
+          () => {
+            playAudioUrlPayload(
+              next
+            );
+          },
+          40
+        );
+
+      }
 
     }
 
@@ -1199,13 +1275,15 @@
       }
 
       if (
-        currentAudio &&
         currentAudioCritical &&
-        !payload.critical
+        !payload.critical &&
+        !voiceAudio.paused
       ) {
 
-        // Mientras suena SET POINT / MATCH POINT,
-        // guardamos solamente el anuncio normal más reciente.
+        /*
+          Mientras suena SET POINT / MATCH POINT guardamos
+          solamente el anuncio normal más reciente.
+        */
         pendingAudioPayload =
           payload;
 
@@ -1213,93 +1291,83 @@
 
       }
 
-      stopCurrentAudio();
+      /*
+        Un anuncio nuevo reemplaza al anterior, igual que
+        QUEUE_FLUSH en la voz del teléfono.
+      */
+      audioPlaybackToken++;
 
-      try {
+      const token =
+        audioPlaybackToken;
 
-        const audio =
-          new Audio();
+      clearVoiceAudioSource();
 
-        audio.autoplay = true;
-        audio.preload = "auto";
-        audio.volume = 1.0;
-        audio.src =
-          payload.url;
+      currentAudioCritical =
+        !!payload.critical;
 
-        currentAudio =
-          audio;
+      voiceAudio.onended =
+        () => {
+          finishVoicePlayback(
+            token
+          );
+        };
 
-        currentAudioCritical =
-          !!payload.critical;
+      voiceAudio.onerror =
+        () => {
 
-        const finish = () => {
+          console.error(
+            "Deuce D CAST audio: no se pudo cargar",
+            payload.url
+          );
 
-          if (currentAudio ===
-              audio) {
-            currentAudio = null;
-            currentAudioCritical =
-              false;
-          }
-
-          if (pendingAudioPayload) {
-
-            const next =
-              pendingAudioPayload;
-
-            pendingAudioPayload =
-              null;
-
-            playAudioUrlPayload(
-              next
-            );
-
-          }
+          finishVoicePlayback(
+            token
+          );
 
         };
 
-        audio.addEventListener(
-          "ended",
-          finish,
-          {
-            once: true
-          }
-        );
+      try {
 
-        audio.addEventListener(
-          "error",
-          () => {
+        voiceAudio.src =
+          payload.url;
 
-            console.error(
-              "Deuce D CAST audio: no se pudo cargar",
-              payload.url
-            );
+        voiceAudio.load();
 
-            finish();
+        const playPromise =
+          voiceAudio.play();
 
-          },
-          {
-            once: true
-          }
-        );
+        if (
+          playPromise &&
+          typeof playPromise.catch ===
+            "function"
+        ) {
 
-        audio.play().catch(
-          error => {
+          playPromise.catch(
+            error => {
 
-            console.error(
-              "Deuce D CAST audio:",
-              error
-            );
+              console.error(
+                "Deuce D CAST audio:",
+                error
+              );
 
-            finish();
+              finishVoicePlayback(
+                token
+              );
 
-          }
-        );
+            }
+          );
+
+        }
 
       } catch (error) {
 
         console.error(
           "Deuce D CAST audio:",
           error
+        );
+
+        finishVoicePlayback(
+          token
         );
 
       }
@@ -1316,9 +1384,6 @@
 
       if (type ===
           "audioStop") {
-
-        pendingAudioPayload =
-          null;
 
         stopCurrentAudio();
 

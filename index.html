@@ -1164,6 +1164,321 @@
     }
 
 
+    const audioTransfers =
+      new Map();
+
+    let currentAudio = null;
+    let currentAudioCritical = false;
+    let pendingAudioPayload = null;
+
+
+    function decodeBase64Audio(
+      encoded
+    ) {
+
+      const binary =
+        atob(encoded);
+
+      const bytes =
+        new Uint8Array(
+          binary.length
+        );
+
+      for (
+        let i = 0;
+        i < binary.length;
+        i++
+      ) {
+
+        bytes[i] =
+          binary.charCodeAt(i);
+
+      }
+
+      return bytes;
+
+    }
+
+
+    function stopCurrentAudio() {
+
+      if (!currentAudio) {
+        return;
+      }
+
+      try {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      } catch (_) {}
+
+      try {
+        if (currentAudio.src) {
+          URL.revokeObjectURL(
+            currentAudio.src
+          );
+        }
+      } catch (_) {}
+
+      currentAudio = null;
+      currentAudioCritical = false;
+
+    }
+
+
+    function playAudioPayload(
+      payload
+    ) {
+
+      if (!payload ||
+          !payload.encoded) {
+        return;
+      }
+
+      if (
+        currentAudio &&
+        currentAudioCritical &&
+        !payload.critical
+      ) {
+
+        // Mientras suena SET POINT / MATCH POINT,
+        // guardamos solamente el anuncio más reciente.
+        pendingAudioPayload =
+          payload;
+
+        return;
+
+      }
+
+      stopCurrentAudio();
+
+      try {
+
+        const bytes =
+          decodeBase64Audio(
+            payload.encoded
+          );
+
+        const blob =
+          new Blob(
+            [bytes],
+            {
+              type:
+                payload.mime ||
+                "audio/wav"
+            }
+          );
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+        const audio =
+          new Audio(url);
+
+        audio.autoplay = true;
+        audio.preload = "auto";
+        audio.volume = 1.0;
+
+        currentAudio =
+          audio;
+
+        currentAudioCritical =
+          !!payload.critical;
+
+        const finish = () => {
+
+          try {
+            URL.revokeObjectURL(
+              url
+            );
+          } catch (_) {}
+
+          if (currentAudio ===
+              audio) {
+            currentAudio = null;
+            currentAudioCritical =
+              false;
+          }
+
+          if (pendingAudioPayload) {
+
+            const next =
+              pendingAudioPayload;
+
+            pendingAudioPayload =
+              null;
+
+            playAudioPayload(
+              next
+            );
+
+          }
+
+        };
+
+        audio.addEventListener(
+          "ended",
+          finish,
+          {
+            once: true
+          }
+        );
+
+        audio.addEventListener(
+          "error",
+          finish,
+          {
+            once: true
+          }
+        );
+
+        audio.play().catch(
+          error => {
+
+            console.error(
+              "Deuce D CAST audio:",
+              error
+            );
+
+            finish();
+
+          }
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Deuce D CAST audio:",
+          error
+        );
+
+      }
+
+    }
+
+
+    function handleAudioMessage(
+      data
+    ) {
+
+      const type =
+        data?.type;
+
+      const audioId =
+        data?.audioId;
+
+      if (!type || !audioId) {
+        return false;
+      }
+
+      if (type ===
+          "audioStart") {
+
+        audioTransfers.set(
+          audioId,
+          {
+            mime:
+              data.mime ||
+              "audio/wav",
+            totalChunks:
+              Number(
+                data.totalChunks ||
+                0
+              ),
+            critical:
+              !!data.critical,
+            chunks: []
+          }
+        );
+
+        return true;
+
+      }
+
+      if (type ===
+          "audioChunk") {
+
+        const transfer =
+          audioTransfers.get(
+            audioId
+          );
+
+        if (!transfer) {
+          return true;
+        }
+
+        transfer.chunks[
+          Number(
+            data.index || 0
+          )
+        ] =
+          data.data || "";
+
+        return true;
+
+      }
+
+      if (type ===
+          "audioEnd") {
+
+        const transfer =
+          audioTransfers.get(
+            audioId
+          );
+
+        audioTransfers.delete(
+          audioId
+        );
+
+        if (!transfer) {
+          return true;
+        }
+
+        const received =
+          transfer.chunks.filter(
+            chunk =>
+              typeof chunk ===
+                "string" &&
+              chunk.length > 0
+          );
+
+        if (
+          transfer.totalChunks > 0 &&
+          received.length !==
+            transfer.totalChunks
+        ) {
+
+          console.error(
+            "Deuce D CAST audio: faltan fragmentos"
+          );
+
+          return true;
+
+        }
+
+        playAudioPayload(
+          {
+            mime:
+              transfer.mime,
+            critical:
+              transfer.critical,
+            encoded:
+              transfer.chunks.join(
+                ""
+              )
+          }
+        );
+
+        return true;
+
+      }
+
+      return false;
+
+    }
+
+
     function updateScore(
       data
     ) {
@@ -1291,6 +1606,14 @@
                   event.data
                 )
               : event.data;
+
+          if (
+            handleAudioMessage(
+              data
+            )
+          ) {
+            return;
+          }
 
           updateScore(
             data

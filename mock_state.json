@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "teamA1": "J1",
+  "teamA2": "J2",
+  "teamB1": "J1",
+  "teamB2": "J2",
+  "photoA1": "",
+  "photoA2": "",
+  "photoB1": "",
+  "photoB2": "",
+  "pointsA": "30",
+  "pointsB": "15",
+  "gamesA": 6,
+  "gamesB": 6,
+  "setsWonA": 1,
+  "setsWonB": 0,
+  "tiebreak": false,
+  "server": "A2",
+  "serverName": "J2",
+  "state": "PUNTO EN JUEGO",
+  "matchFinished": false,
+  "setWinners": [
+    "A"
+  ],
+  "setsA": [
+    6,
+    2
+  ],
+  "setsB": [
+    4,
+    2
+  ]
+}

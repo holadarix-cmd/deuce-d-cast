@@ -227,8 +227,9 @@
   }
 
   function renderState(state) {
-    if (!layout || !state || typeof state !== 'object') return;
+    if (!state || typeof state !== 'object') return;
     lastState = state;
+    if (!layout) return;
     renderPlayers(state);
     renderScore(state);
     renderProgress(state);
@@ -284,15 +285,40 @@
   setInterval(updateClock, 1000);
   updateClock();
 
-  async function boot() {
-    layout = await fetch('assets/layout.json', { cache: 'no-store' }).then(r => r.json());
+  async function loadLayout() {
+    let lastError = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const response = await fetch(`assets/layout.json?v=21-${attempt}`, {
+          cache: 'no-store',
+        });
+        if (!response.ok) throw new Error(`layout HTTP ${response.status}`);
+        layout = await response.json();
+        if (lastState) renderState(lastState);
+        return true;
+      } catch (error) {
+        lastError = error;
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    }
+    console.error('Deuce D CAST: no se pudo cargar el layout.', lastError);
+    return false;
+  }
 
-    if (window.cast?.framework?.CastReceiverContext) {
+  async function boot() {
+    const hasCast = Boolean(window.cast?.framework?.CastReceiverContext);
+
+    // El canal se inicia antes de cargar gráficos. Así un fallo temporal de
+    // red no descarta el primer estado enviado por el teléfono.
+    if (hasCast) {
       const context = cast.framework.CastReceiverContext.getInstance();
       context.addCustomMessageListener(NAMESPACE, event => handleMessage(event.data));
       context.start({ disableIdleTimeout: true });
-      return;
     }
+
+    await loadLayout();
+
+    if (hasCast) return;
 
     // Vista local de desarrollo cuando se abre fuera de Chromecast.
     try {

@@ -16,6 +16,8 @@
   const progressRoot = document.getElementById('progress');
   const serverBall = document.getElementById('serverBall');
   const audio = document.getElementById('castAudio');
+  const finalResultRoot = document.getElementById('finalResult');
+  const finalScoresRoot = document.getElementById('finalScores');
 
   function fitStage() {
     const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
@@ -48,6 +50,68 @@
   function cleanName(value, fallback) {
     const text = String(value ?? '').trim();
     return text || fallback;
+  }
+
+  function resolvedPhotoUrl(rawPhotoUrl) {
+    const assetMatch = String(rawPhotoUrl ?? '').match(/^cast-asset:\/\/(.+)$/);
+    return assetMatch ? (assetUrls.get(assetMatch[1]) ?? '') : String(rawPhotoUrl ?? '');
+  }
+
+  function renderFinalResult(state) {
+    if (!Boolean(state.matchFinished)) {
+      finalResultRoot.style.display = 'none';
+      return false;
+    }
+
+    const winner = Number(state.setsWonB ?? 0) > Number(state.setsWonA ?? 0) ? 'B' : 'A';
+    const names = winner === 'A'
+      ? [state.teamA1, state.teamA2]
+      : [state.teamB1, state.teamB2];
+    const photos = winner === 'A'
+      ? [state.photoA1, state.photoA2]
+      : [state.photoB1, state.photoB2];
+
+    names.forEach((name, index) => {
+      document.getElementById(`finalName${index + 1}`).textContent =
+        cleanName(name, `J${index + 1}`).toUpperCase();
+
+      const photo = document.getElementById(`finalPhoto${index + 1}`);
+      const fallback = document.getElementById(`finalFallback${index + 1}`);
+      const url = resolvedPhotoUrl(photos[index]);
+      if (url.trim()) {
+        photo.src = url;
+        photo.style.display = 'block';
+        fallback.style.display = 'none';
+        photo.onerror = () => {
+          photo.style.display = 'none';
+          fallback.style.display = 'flex';
+        };
+      } else {
+        photo.removeAttribute('src');
+        photo.style.display = 'none';
+        fallback.style.display = 'flex';
+      }
+    });
+
+    finalScoresRoot.replaceChildren();
+    const rows = [
+      ['red', Array.isArray(state.setsA) ? state.setsA.slice(0, 3) : [], 133],
+      ['blue', Array.isArray(state.setsB) ? state.setsB.slice(0, 3) : [], 486],
+    ];
+    const columns = [835, 1025, 1200];
+    for (const [color, values, top] of rows) {
+      values.forEach((value, index) => {
+        const score = document.createElement('div');
+        score.className = `final-set-score ${color}`;
+        score.textContent = String(value ?? 0);
+        score.style.left = `${columns[index]}px`;
+        score.style.top = `${top}px`;
+        finalScoresRoot.appendChild(score);
+      });
+    }
+
+    finalResultRoot.style.display = 'block';
+    return true;
   }
 
   function renderPlayers(state) {
@@ -236,6 +300,7 @@
     if (!state || typeof state !== 'object') return;
     lastState = state;
     if (!layout) return;
+    if (renderFinalResult(state)) return;
     renderPlayers(state);
     renderScore(state);
     renderProgress(state);
@@ -303,7 +368,7 @@
           audio.src = objectUrl;
           void audio.play();
         } else if (transfer.kind === 'photo' && lastState) {
-          renderPlayers(lastState);
+          renderState(lastState);
         }
       } catch (_) {}
       return;

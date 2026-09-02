@@ -22,10 +22,23 @@
 
       <div id="clock" aria-label="Hora actual">00:00</div>
       <img id="serverBall" src="assets/server_ball.png" alt="Saca" />
+
+      <div id="finalResult" aria-label="Resultado final del partido">
+        <div id="finalPanel">
+          <img id="finalBase" src="assets/final_result_static_base.png" alt="" />
+          <img id="finalPhoto1" class="final-photo final-photo-1" alt="Ganador 1" />
+          <img id="finalPhoto2" class="final-photo final-photo-2" alt="Ganador 2" />
+          <div id="finalFallback1" class="final-fallback final-photo-1">J1</div>
+          <div id="finalFallback2" class="final-fallback final-photo-2">J2</div>
+          <div id="finalName1" class="final-name final-name-1">J1</div>
+          <div id="finalName2" class="final-name final-name-2">J2</div>
+          <div id="finalScores"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <audio id="castAudio" preload="auto"></audio>
-  <script src="receiver.js?v=27"></script>
+  <script src="receiver.js?v=27-final-1"></script>
 </body>
 </html>

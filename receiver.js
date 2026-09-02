@@ -312,6 +312,29 @@
     // red no descarta el primer estado enviado por el teléfono.
     if (hasCast) {
       const context = cast.framework.CastReceiverContext.getInstance();
+
+      const sendReady = senderId => {
+        if (!senderId) return;
+        try {
+          context.sendCustomMessage(
+            NAMESPACE,
+            senderId,
+            { type: 'receiverReady' },
+          );
+        } catch (_) {
+          context.sendCustomMessage(
+            NAMESPACE,
+            senderId,
+            JSON.stringify({ type: 'receiverReady' }),
+          );
+        }
+      };
+
+      context.addEventListener(
+        cast.framework.system.EventType.SENDER_CONNECTED,
+        event => sendReady(event.senderId),
+      );
+
       context.addCustomMessageListener(NAMESPACE, event => {
         let data = event.data;
         if (typeof data === 'string') {
@@ -319,11 +342,7 @@
         }
 
         if (data?.type === 'senderPing') {
-          context.sendCustomMessage(
-            NAMESPACE,
-            event.senderId,
-            JSON.stringify({ type: 'receiverReady' }),
-          );
+          sendReady(event.senderId);
           return;
         }
 

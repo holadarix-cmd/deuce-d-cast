@@ -312,7 +312,23 @@
     // red no descarta el primer estado enviado por el teléfono.
     if (hasCast) {
       const context = cast.framework.CastReceiverContext.getInstance();
-      context.addCustomMessageListener(NAMESPACE, event => handleMessage(event.data));
+      context.addCustomMessageListener(NAMESPACE, event => {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch (_) {}
+        }
+
+        if (data?.type === 'senderPing') {
+          context.sendCustomMessage(
+            NAMESPACE,
+            event.senderId,
+            JSON.stringify({ type: 'receiverReady' }),
+          );
+          return;
+        }
+
+        handleMessage(event.data);
+      });
       context.start({ disableIdleTimeout: true });
     }
 

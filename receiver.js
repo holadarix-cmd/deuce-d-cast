@@ -7,6 +7,8 @@
 
   let layout = null;
   let lastState = null;
+  const assetTransfers = new Map();
+  const assetUrls = new Map();
 
   const stage = document.getElementById('stage');
   const playersRoot = document.getElementById('players');
@@ -58,8 +60,12 @@
       ['B2', state.teamB2, state.photoB2],
     ];
 
-    for (const [slot, name, photoUrl] of slots) {
+    for (const [slot, name, rawPhotoUrl] of slots) {
       const cfg = layout.players[slot];
+      const assetMatch = String(rawPhotoUrl ?? '').match(/^cast-asset:\/\/(.+)$/);
+      const photoUrl = assetMatch
+        ? (assetUrls.get(assetMatch[1]) ?? '')
+        : rawPhotoUrl;
       const hasPhoto = typeof photoUrl === 'string' && photoUrl.trim().length > 0;
 
       const visual = imageEl(
@@ -259,6 +265,49 @@
     }
 
     if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'assetStart') {
+      assetTransfers.set(data.assetId, {
+        kind: data.kind,
+        mime: data.mime || 'application/octet-stream',
+        slot: data.slot || null,
+        totalChunks: Number(data.totalChunks || 0),
+        chunks: [],
+      });
+      return;
+    }
+
+    if (data.type === 'assetChunk') {
+      const transfer = assetTransfers.get(data.assetId);
+      if (transfer) transfer.chunks[Number(data.index)] = String(data.data || '');
+      return;
+    }
+
+    if (data.type === 'assetEnd') {
+      const transfer = assetTransfers.get(data.assetId);
+      assetTransfers.delete(data.assetId);
+      if (!transfer || transfer.chunks.filter(Boolean).length !== transfer.totalChunks) return;
+
+      try {
+        const binary = atob(transfer.chunks.join(''));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const previousUrl = assetUrls.get(data.assetId);
+        if (previousUrl) URL.revokeObjectURL(previousUrl);
+        const objectUrl = URL.createObjectURL(new Blob([bytes], { type: transfer.mime }));
+        assetUrls.set(data.assetId, objectUrl);
+
+        if (transfer.kind === 'audio') {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.src = objectUrl;
+          void audio.play();
+        } else if (transfer.kind === 'photo' && lastState) {
+          renderPlayers(lastState);
+        }
+      } catch (_) {}
+      return;
+    }
 
     if (data.type === 'audioUrl') {
       void playAudioMessage(data);
